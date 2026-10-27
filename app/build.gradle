@@ -1,0 +1,98 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.application'
+}
+
+// ---- Settings produced by scripts/configure.py -------------------------------
+def cfgFile = rootProject.file('build-config.json')
+if (!cfgFile.exists()) {
+    throw new GradleException('build-config.json not found. Run: python3 scripts/configure.py')
+}
+def cfg = new JsonSlurper().parse(cfgFile)
+
+// Escape a value so it can be embedded in a generated Java string constant.
+def javaStr = { String s -> '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"' }
+
+def orientationMap = [
+        system   : 'unspecified', // follows the phone's auto-rotate toggle
+        sensor   : 'fullSensor',  // rotates with the sensor, ignores the toggle
+        portrait : 'portrait',
+        landscape: 'sensorLandscape',
+]
+
+// Optional release signing (set by the GitHub workflow when secrets exist).
+def keystorePath = System.getenv('KEYSTORE_FILE')
+
+android {
+    namespace 'io.github.webapp2apk'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId cfg.packageName
+        targetSdk 34
+        versionCode cfg.versionCode as int
+        versionName cfg.versionName
+
+        buildConfigField 'String', 'APP_URL', javaStr(cfg.appUrl)
+        buildConfigField 'String', 'USER_AGENT_MODE', javaStr(cfg.userAgentMode)
+        buildConfigField 'String', 'CUSTOM_USER_AGENT', javaStr(cfg.customUserAgent ?: '')
+    }
+
+    flavorDimensions 'device'
+    productFlavors {
+        tv {
+            dimension 'device'
+            minSdk 23                      // Android 6.0
+            buildConfigField 'boolean', 'IS_TV', 'true'
+            buildConfigField 'boolean', 'FULLSCREEN', 'true'
+            manifestPlaceholders = [screenOrientation: 'sensorLandscape']
+        }
+        phone {
+            dimension 'device'
+            minSdk 33                      // Android 13
+            buildConfigField 'boolean', 'IS_TV', 'false'
+            buildConfigField 'boolean', 'FULLSCREEN', cfg.fullscreenPhone ? 'true' : 'false'
+            manifestPlaceholders = [screenOrientation: orientationMap[cfg.phoneOrientation] ?: 'unspecified']
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath && file(keystorePath).exists()) {
+                storeFile file(keystorePath)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Without your own keystore the APK is signed with the auto-generated debug key.
+            signingConfig = (keystorePath && file(keystorePath).exists()) ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    sourceSets {
+        main {
+            res.srcDirs += ['src/generated/res']
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}

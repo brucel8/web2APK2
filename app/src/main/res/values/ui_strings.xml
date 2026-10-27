@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="press_back_again">Press back again to exit</string>
+    <string name="error_title">Can\'t load the page</string>
+    <string name="error_hint">Check your network connection, then retry.</string>
+    <string name="retry">Retry</string>
+    <string name="menu_reload">Reload</string>
+    <string name="menu_home">Home page</string>
+    <string name="menu_exit">Exit</string>
+    <string name="no_app_found">No app found to open this link</string>
+</resources>
