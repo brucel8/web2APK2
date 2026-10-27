@@ -1,0 +1,181 @@
+name: Build Android app from a website URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Website URL to wrap, e.g. https://www.example.com"
+        required: true
+        type: string
+      build_target:
+        description: "Which app(s) to build"
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - tv
+          - phone
+      app_name:
+        description: "App name (optional, default: taken from the URL)"
+        required: false
+        type: string
+      icon_url:
+        description: "Direct link to a PNG/JPG/WebP icon (optional, default: letter icon)"
+        required: false
+        type: string
+      theme_color:
+        description: "Theme color, hex (optional)"
+        required: false
+        default: "#1f2937"
+        type: string
+      package_name:
+        description: "Android package id (optional, e.g. com.mycompany.myapp)"
+        required: false
+        type: string
+      phone_orientation:
+        description: "Phone screen rotation: system = follow auto-rotate toggle"
+        required: false
+        default: system
+        type: choice
+        options:
+          - system
+          - sensor
+          - portrait
+          - landscape
+      user_agent:
+        description: "Browser identity: auto, desktop, or custom"
+        required: false
+        default: auto
+        type: choice
+        options:
+          - auto
+          - desktop
+          - custom
+      custom_user_agent:
+        description: "Custom user-agent string (only when user_agent = custom)"
+        required: false
+        type: string
+      fullscreen_phone:
+        description: "Hide status/navigation bars on the phone app (TV is always fullscreen)"
+        required: false
+        default: false
+        type: boolean
+      version_name:
+        description: "Version name shown to users"
+        required: false
+        default: "1.0.0"
+        type: string
+      publish_release:
+        description: "Publish the APKs as a GitHub Release (easy download link)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Optional signing secrets. Without them the APK is signed with a temporary debug key.
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install icon tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          python -m pip install --quiet pillow
+
+      - name: Resolve settings and generate icons
+        id: cfg
+        env:
+          INPUT_APP_URL: ${{ inputs.app_url }}
+          INPUT_BUILD_TARGET: ${{ inputs.build_target }}
+          INPUT_APP_NAME: ${{ inputs.app_name }}
+          INPUT_ICON_URL: ${{ inputs.icon_url }}
+          INPUT_THEME_COLOR: ${{ inputs.theme_color }}
+          INPUT_PACKAGE_NAME: ${{ inputs.package_name }}
+          INPUT_PHONE_ORIENTATION: ${{ inputs.phone_orientation }}
+          INPUT_USER_AGENT: ${{ inputs.user_agent }}
+          INPUT_CUSTOM_USER_AGENT: ${{ inputs.custom_user_agent }}
+          INPUT_FULLSCREEN_PHONE: ${{ inputs.fullscreen_phone }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          INPUT_VERSION_CODE: ${{ github.run_number }}
+        run: python scripts/configure.py
+
+      - name: Prepare signing key (optional)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "Using your release keystore."
+          else
+            echo "No KEYSTORE_BASE64 secret: using a temporary debug key."
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build APK(s)
+        run: |
+          TASKS=""
+          if [ "${{ steps.cfg.outputs.build_tv }}" = "true" ]; then TASKS="$TASKS assembleTvRelease"; fi
+          if [ "${{ steps.cfg.outputs.build_phone }}" = "true" ]; then TASKS="$TASKS assemblePhoneRelease"; fi
+          gradle --no-daemon $TASKS
+
+      - name: Collect APKs
+        env:
+          SLUG: ${{ steps.cfg.outputs.slug }}
+          VERSION: ${{ steps.cfg.outputs.version }}
+        run: |
+          mkdir -p dist
+          if [ "${{ steps.cfg.outputs.build_tv }}" = "true" ]; then
+            cp app/build/outputs/apk/tv/release/app-tv-release.apk "dist/${SLUG}-tv-v${VERSION}.apk"
+          fi
+          if [ "${{ steps.cfg.outputs.build_phone }}" = "true" ]; then
+            cp app/build/outputs/apk/phone/release/app-phone-release.apk "dist/${SLUG}-phone-v${VERSION}.apk"
+          fi
+          ls -lh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.cfg.outputs.slug }}-apks
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.cfg.outputs.slug }}-v${{ steps.cfg.outputs.version }}-build${{ github.run_number }}
+          name: ${{ steps.cfg.outputs.slug }} v${{ steps.cfg.outputs.version }} (build ${{ github.run_number }})
+          body: "Android app built from a website URL. Install the -tv APK on Android TV 6.0+, the -phone APK on Android 13+."
+          files: dist/*.apk
+
+      - name: Summary
+        run: |
+          {
+            echo "## Build finished"
+            echo
+            echo "Download the APK(s) from the **Releases** page of this repository"
+            echo "(or from the *Artifacts* section at the bottom of this run)."
+          } >> "$GITHUB_STEP_SUMMARY"
