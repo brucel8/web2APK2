@@ -1,4 +1,4 @@
-# Web2APK — turn any website into an Android app with GitHub Actions
+# WebApp2APK — turn any website into an Android app with GitHub Actions
 
 Enter a URL, click **Run workflow**, get an installable APK. No Android Studio, no local setup.
 
@@ -8,6 +8,8 @@ Enter a URL, click **Run workflow**, get an installable APK. No Android Studio, 
 | **Phone** | 13 (API 33) and up | Adaptive icon, configurable rotation, optional fullscreen |
 
 You can build **TV only, phone only, or both** (two separate APKs).
+
+No GitHub Actions? There is also a **[Windows portable version](#windows-portable-version-build-on-your-pc)** that builds the same apps on your own PC.
 
 ## Quick start
 
@@ -73,6 +75,66 @@ INPUT_APP_URL=https://www.example.com python3 scripts/configure.py   # or edit c
 gradle assembleTvRelease assemblePhoneRelease
 # APKs: app/build/outputs/apk/{tv,phone}/release/
 ```
+
+## Windows portable version (build on your PC)
+
+Prefer not to use GitHub Actions? [`windows/WebApp2APK-Portable.zip`](windows/WebApp2APK-Portable.zip) does the same job on a Windows PC: enter a URL, get a TV and/or phone APK. It is portable: unzip and run, nothing is installed on your system and no Android Studio is needed.
+
+**Requirements:** Windows 10/11 (64-bit), internet access, about 4 GB free disk space.
+
+### Use it
+
+1. Download the ZIP (open the file in the `windows` folder and click **Download raw file**, or grab it from the Releases page if provided) and unzip it to a **simple path** such as `C:\WebApp2APK`. Avoid spaces and non-English characters in the path; Android build tools can fail on them.
+2. Double-click **`WebApp2APK.bat`**.
+3. Enter the website URL (everything else is optional), choose **both / tv / phone**, and click **Build APK**.
+4. A console window shows progress. When it finishes, the `output` folder opens with your APK(s), for example `site-tv-v1.0.0.apk` and `site-phone-v1.0.0.apk`.
+
+The window has the same options as the GitHub form: app name, icon, theme color, package id, phone rotation, browser identity, phone fullscreen and version name. For the icon you can pick a local image file (PNG/JPG/GIF) or paste a link.
+
+**First build:** it downloads about 1 GB of tools (JDK 17, Gradle 8.7, Android SDK) into a `tools` folder next to the program, then the Android Gradle plugin libraries. Allow 10-20 minutes. Later builds take about 1-3 minutes. By building you accept the [Android SDK license](https://developer.android.com/studio/terms).
+
+### Command line (optional)
+
+```bat
+BuildFromUrl.bat https://www.example.com tv
+```
+
+or, for all options:
+
+```bat
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -Url https://www.example.com -Target both -Name "My App" -ThemeColor "#b91c1c"
+```
+
+Options: `-Name` `-Target` `-Icon` `-ThemeColor` `-PackageName` `-PhoneOrientation` `-UserAgent` `-CustomUserAgent` `-FullscreenPhone` `-VersionName`. For non-English app names use the window (`WebApp2APK.bat`) rather than `BuildFromUrl.bat`.
+
+### What is inside
+
+| Path | Purpose |
+|------|---------|
+| `WebApp2APK.bat` | Opens the input window |
+| `BuildFromUrl.bat` | Quick command-line build |
+| `scripts\build.ps1` | Downloads tools, generates icons, builds the APKs |
+| `scripts\gui.ps1` | The input window |
+| `project\` | The same Android project used by the GitHub version |
+| `tools\` *(created on first run)* | Portable JDK, Gradle and Android SDK |
+| `data\` *(created on first run)* | Your signing key and last-used settings |
+| `output\` *(created on first run)* | Finished APKs |
+
+### Updates and signing
+
+A signing key is created once in `data\` and reused for every build, so a new APK can update an older install without uninstalling. **Back up the `data` folder**: if you lose `release.jks`, you have to uninstall old apps before installing new builds. (Do not share the `data` folder; it contains your key and its password.)
+
+### Differences from the GitHub version
+
+| | GitHub Actions | Windows portable |
+|---|---|---|
+| Where it builds | GitHub's servers | Your PC |
+| Setup | Fork + run workflow | Unzip + double-click |
+| Signing key | Optional secrets, else a temporary key | Created automatically and reused |
+| Icon source | Link to PNG/JPG/WebP | Local file or link (PNG/JPG/GIF) |
+| App itself | Same | Same |
+
+The resulting apps are identical in behavior: TV 6.0+ / phone 13+, same rotation, browser-identity and fullscreen options.
 
 ## Limits to know about
 
