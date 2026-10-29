@@ -1,4 +1,4 @@
-# WebApp2APK — turn any website into an Android app with GitHub Actions
+# Web2APK — turn any website into Android TV or phone app
 
 Enter a URL, click **Run workflow**, get an installable APK. No Android Studio, no local setup.
 
