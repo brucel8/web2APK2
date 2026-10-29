@@ -25,7 +25,7 @@ def orientationMap = [
 def keystorePath = System.getenv('KEYSTORE_FILE')
 
 android {
-    namespace 'io.github.webapp2apk'
+    namespace 'io.github.web2apk'
     compileSdk 34
 
     defaultConfig {

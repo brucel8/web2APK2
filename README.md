@@ -1,4 +1,4 @@
-# Web2APK — turn any website into Android TV or phone app
+# Web2APK — turn any website into an Android TV or phone app with GitHub Actions
 
 Enter a URL, click **Run workflow**, get an installable APK. No Android Studio, no local setup.
 
@@ -78,14 +78,14 @@ gradle assembleTvRelease assemblePhoneRelease
 
 ## Windows portable version (build on your PC)
 
-Prefer not to use GitHub Actions? [`windows/WebApp2APK-Portable.zip`](windows/WebApp2APK-Portable.zip) does the same job on a Windows PC: enter a URL, get a TV and/or phone APK. It is portable: unzip and run, nothing is installed on your system and no Android Studio is needed.
+Prefer not to use GitHub Actions? [`windows/Web2APK-Portable.zip`](windows/Web2APK-Portable.zip) does the same job on a Windows PC: enter a URL, get a TV and/or phone APK. It is portable: unzip and run, nothing is installed on your system and no Android Studio is needed.
 
 **Requirements:** Windows 10/11 (64-bit), internet access, about 4 GB free disk space.
 
 ### Use it
 
-1. Download the ZIP (open the file in the `windows` folder and click **Download raw file**, or grab it from the Releases page if provided) and unzip it to a **simple path** such as `C:\WebApp2APK`. Avoid spaces and non-English characters in the path; Android build tools can fail on them.
-2. Double-click **`WebApp2APK.bat`**.
+1. Download the ZIP (open the file in the `windows` folder and click **Download raw file**, or grab it from the Releases page if provided) and unzip it to a **simple path** such as `C:\Web2APK`. Avoid spaces and non-English characters in the path; Android build tools can fail on them.
+2. Double-click **`Web2APK.bat`**.
 3. Enter the website URL (everything else is optional), choose **both / tv / phone**, and click **Build APK**.
 4. A console window shows progress. When it finishes, the `output` folder opens with your APK(s), for example `site-tv-v1.0.0.apk` and `site-phone-v1.0.0.apk`.
 
@@ -105,13 +105,13 @@ or, for all options:
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -Url https://www.example.com -Target both -Name "My App" -ThemeColor "#b91c1c"
 ```
 
-Options: `-Name` `-Target` `-Icon` `-ThemeColor` `-PackageName` `-PhoneOrientation` `-UserAgent` `-CustomUserAgent` `-FullscreenPhone` `-VersionName`. For non-English app names use the window (`WebApp2APK.bat`) rather than `BuildFromUrl.bat`.
+Options: `-Name` `-Target` `-Icon` `-ThemeColor` `-PackageName` `-PhoneOrientation` `-UserAgent` `-CustomUserAgent` `-FullscreenPhone` `-VersionName`. For non-English app names use the window (`Web2APK.bat`) rather than `BuildFromUrl.bat`.
 
 ### What is inside
 
 | Path | Purpose |
 |------|---------|
-| `WebApp2APK.bat` | Opens the input window |
+| `Web2APK.bat` | Opens the input window |
 | `BuildFromUrl.bat` | Quick command-line build |
 | `scripts\build.ps1` | Downloads tools, generates icons, builds the APKs |
 | `scripts\gui.ps1` | The input window |
